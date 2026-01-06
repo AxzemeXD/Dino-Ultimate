@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ULTRA DINO: TITAN REMASTERED</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --neon: #00ffcc; --gold: #ffcc00; --red: #ff0044; --bg: #020205; 
+            --glass: rgba(12, 12, 25, 0.98); --border: rgba(0, 255, 204, 0.3);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; outline: none; }
+        body { background: #000; color: #fff; font-family: 'Orbitron', sans-serif; overflow: hidden; height: 100vh; width: 100vw; position: fixed; }
+
+        #cabinet { position: relative; width: 100vw; height: 100vh; background: var(--bg); overflow: hidden; }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* HUD */
+        #hud { 
+            position: absolute; top: 0; width: 100%; padding: 20px; 
+            display: flex; justify-content: space-between; z-index: 100;
+            opacity: 0; transition: 0.5s; pointer-events: none;
+        }
+        .stat-group { background: var(--glass); padding: 10px 18px; border-radius: 15px; border: 1px solid var(--border); text-align: center; backdrop-filter: blur(10px); }
+        .stat-label { font-size: 8px; color: var(--neon); letter-spacing: 2px; margin-bottom: 2px; }
+        .stat-value { font-size: 18px; font-weight: 900; }
+
+        /* MENUS */
+        #overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 1000; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); }
+        .card { 
+            background: var(--glass); width: 88%; max-width: 440px; padding: 35px; 
+            border-radius: 30px; border: 1px solid var(--border); text-align: center;
+            box-shadow: 0 0 60px rgba(0, 255, 204, 0.15); animation: zoomIn 0.3s ease;
+        }
+        @keyframes zoomIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        .hidden { display: none !important; }
+        h1 { font-size: 24px; margin-bottom: 25px; letter-spacing: 4px; color: #fff; text-shadow: 0 0 15px var(--neon); }
+
+        input { 
+            width: 100%; padding: 18px; margin-bottom: 12px; border-radius: 15px; border: 1px solid #222; 
+            background: #000; color: #fff; font-family: 'Orbitron'; text-align: center; font-size: 14px;
+        }
+        .btn { 
+            width: 100%; padding: 20px; margin-bottom: 10px; border-radius: 18px; border: 1px solid var(--border); 
+            background: rgba(255,255,255,0.03); color: #fff; font-family: 'Orbitron'; font-weight: 900; 
+            cursor: pointer; transition: 0.2s; text-transform: uppercase;
+        }
+        .btn-prime { background: var(--neon); color: #000; border: none; box-shadow: 0 5px 20px rgba(0,255,204,0.4); }
+        .btn:active { transform: scale(0.95); }
+
+        .scroll-area { max-height: 280px; overflow-y: auto; margin-bottom: 20px; padding-right: 8px; }
+        .row { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.03); margin-bottom: 8px; border-radius: 12px; font-size: 11px; }
+        
+        .toggle { width: 44px; height: 22px; background: #333; border-radius: 11px; position: relative; cursor: pointer; }
+        .toggle.on { background: var(--neon); }
+        .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: 0.2s; }
+        .toggle.on::after { left: 25px; }
+
+        .skin-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .skin-item { 
+            padding: 15px; border-radius: 18px; border: 2px solid transparent; background: rgba(255,255,255,0.05); 
+            cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px;
+        }
+        .skin-item.active { border-color: var(--neon); background: rgba(0,255,204,0.1); }
+        .skin-preview { width: 30px; height: 30px; border-radius: 6px; }
+        .price-tag { font-size: 10px; font-weight: 900; color: var(--gold); }
+    </style>
+</head>
+<body>
+
+<div id="cabinet">
+    <div id="hud">
+        <div class="stat-group"><div class="stat-label">INTEGRITY</div><div id="hp-val" class="stat-value" style="color:var(--red)">❤️❤️❤️</div></div>
+        <div class="stat-group"><div class="stat-label">CREDITS</div><div id="cr-val" class="stat-value" style="color:var(--gold)">0</div></div>
+        <div class="stat-group"><div class="stat-label">ALTITUDE</div><div id="sc-val" class="stat-value">0</div></div>
+    </div>
+
+    <canvas id="titanCanvas"></canvas>
+
+    <div id="overlay">
+        <div id="scr-auth" class="card">
+            <h1>AUTH_SYSTEM</h1>
+            <input type="text" id="p-id" placeholder="PILOT NAME">
+            <input type="password" id="p-key" placeholder="SECURITY KEY">
+            <button class="btn btn-prime" onclick="Core.login()">Initialize</button>
+        </div>
+
+        <div id="scr-hub" class="card hidden">
+            <h1 id="user-tag">TITAN HUB</h1>
+            <p id="hi-val" style="color: var(--neon); font-size: 11px; margin-bottom: 25px;">RECORD: 0M</p>
+            <button class="btn btn-prime" onclick="Engine.start()">LAUNCH MISSION</button>
+            <button class="btn" onclick="UI.show('scr-shop')">ARMORY</button>
+            <button class="btn" onclick="UI.show('scr-config')">SETTINGS</button>
+        </div>
+
+        <div id="scr-config" class="card hidden">
+            <h1>CONFIG</h1>
+            <div class="scroll-area">
+                <div class="row"><span>AUDIO CORE</span><div class="toggle on" onclick="Core.set('audio', this)"></div></div>
+                <div class="row"><span>NEON GLOW</span><div class="toggle on" onclick="Core.set('glow', this)"></div></div>
+                <div class="row"><span>STARFIELD</span><div class="toggle on" onclick="Core.set('sky', this)"></div></div>
+                <div class="row"><span>PARALLAX</span><div class="toggle on" onclick="Core.set('para', this)"></div></div>
+                <div class="row"><span>SHAKE FX</span><div class="toggle on" onclick="Core.set('shake', this)"></div></div>
+                <div class="row"><span>PARTICLES</span><div class="toggle on" onclick="Core.set('part', this)"></div></div>
+                <div class="row"><span>60FPS LOCK</span><div class="toggle on" onclick="Core.set('fps', this)"></div></div>
+                <div class="row"><span>CRT FILTER</span><div class="toggle" onclick="Core.set('crt', this)"></div></div>
+                <div class="row"><span>DIFFICULTY+</span><div class="toggle" onclick="Core.set('hard', this)"></div></div>
+                <div class="row"><span>HAPTICS</span><div class="toggle on" onclick="Core.set('vibe', this)"></div></div>
+            </div>
+            <button class="btn btn-prime" onclick="UI.show('scr-hub')">CONFIRM</button>
+        </div>
+
+        <div id="scr-shop" class="card hidden">
+            <h1>ARMORY</h1>
+            <div class="scroll-area">
+                <div class="skin-grid" id="skin-grid"></div>
+            </div>
+            <button class="btn btn-prime" onclick="UI.show('scr-hub')">BACK</button>
+        </div>
+
+        <div id="scr-fail" class="card hidden">
+            <h1 style="color:var(--red)">TERMINATED</h1>
+            <p id="final-sc-label" style="font-size: 32px; margin-bottom: 25px;">0M</p>
+            <button class="btn btn-prime" onclick="Engine.start()">REBOOT</button>
+            <button class="btn" onclick="UI.show('scr-hub')">HUB</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const AudioEngine = {
+    ctx: null,
+    init() { if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); },
+    play(f, t, d) {
+        if(!Core.config.audio || !this.ctx) return;
+        try {
+            const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+            o.type = t; o.frequency.setValueAtTime(f, this.ctx.currentTime);
+            o.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + d);
+            g.gain.setValueAtTime(0.1, this.ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + d);
+            o.connect(g); g.connect(this.ctx.destination);
+            o.start(); o.stop(this.ctx.currentTime + d);
+        } catch(e) {}
+    }
+};
+
+const Core = {
+    user: null, config: { audio:1, glow:1, sky:1, para:1, shake:1, part:1, fps:1, vibe:1, crt:0, hard:0 },
+    skins: [
+        {n:"Mint", c:"#00ffcc", p:0}, {n:"Carbon", c:"#333333", p:50}, {n:"Cyber", c:"#0088ff", p:100},
+        {n:"Purple", c:"#aa00ff", p:250}, {n:"Plasma", c:"#ff00ff", p:400}, {n:"Solar", c:"#ff4400", p:550},
+        {n:"Toxic", c:"#55ff00", p:700}, {n:"Titan", c:"#ffcc00", p:850}, {n:"Blood", c:"#ff0044", p:950},
+        {n:"Ghost", c:"#ffffff", p:1000}
+    ],
+    login() {
+        const id = document.getElementById('p-id').value, key = document.getElementById('p-key').value;
+        if(!id || !key) return;
+        let d = JSON.parse(localStorage.getItem("TITAN_REM_"+id));
+        if(d && d.key !== key) return alert("KEY INVALID");
+        if(!d) d = { id, key, cr:0, hi:0, sks:["#00ffcc"], cur:"#00ffcc" };
+        this.user = d; this.save(); AudioEngine.init(); UI.show('scr-hub');
+    },
+    save() {
+        localStorage.setItem("TITAN_REM_"+this.user.id, JSON.stringify(this.user));
+        document.getElementById('user-tag').innerText = "PILOT: " + this.user.id;
+        document.getElementById('hi-val').innerText = "RECORD: " + this.user.hi + "M";
+    },
+    set(k, el) { this.config[k] = !this.config[k]; el.classList.toggle('on'); }
+};
+
+const Engine = {
+    canvas: document.getElementById('titanCanvas'),
+    ctx: document.getElementById('titanCanvas').getContext('2d'),
+    active: false, frame: 0, score: 0, lives: 3, speed: 8,
+    p: { x: 100, y: 0, dy: 0, g: true, anim: 0, inv: 0 },
+    obs: [], stars: [],
+
+    init() {
+        this.resize();
+        window.onresize = () => this.resize();
+        for(let i=0; i<80; i++) this.stars.push({x:Math.random()*this.canvas.width, y:Math.random()*this.canvas.height*0.6, s:Math.random()*2});
+        this.loop();
+    },
+    resize() { this.canvas.width = window.innerWidth; this.canvas.height = window.innerHeight; },
+    start() {
+        this.active = true; this.frame = 0; this.score = 0; this.lives = 3; this.speed = 8;
+        this.obs = []; this.p.y = this.canvas.height * 0.75 - 60;
+        UI.hideAll(); document.getElementById('hud').style.opacity = 1;
+    },
+    update() {
+        if(!this.active) return;
+        this.frame++; this.score = Math.floor(this.frame / 6);
+        this.speed = Math.min(18, 8 + (this.score / 500));
+        let gy = this.canvas.height * 0.75;
+
+        if(!this.p.g) { this.p.dy += 0.95; this.p.y += this.p.dy; }
+        if(this.p.y >= gy - 60) { this.p.y = gy - 60; this.p.dy = 0; this.p.g = true; }
+        if(this.p.inv > 0) this.p.inv--;
+        this.p.anim += 0.22;
+
+        if(this.frame % 85 === 0) {
+            let t = (this.score > 400 && Math.random() > 0.7) ? 'bird' : 'cactus';
+            this.obs.push({ x: this.canvas.width + 100, y: t==='bird' ? gy-150 : gy-58, w: 45, h: 50, t });
+        }
+        if(this.frame % 150 === 0) this.obs.push({ x: this.canvas.width + 100, y: gy-120, w:30, h:30, t:'coin' });
+
+        this.obs.forEach((o, i) => {
+            o.x -= this.speed;
+            if(this.p.inv === 0 && Math.abs(this.p.x - o.x) < 35 && Math.abs(this.p.y - o.y) < 40) {
+                if(o.t === 'coin') { Core.user.cr += 10; this.obs.splice(i, 1); AudioEngine.play(800, 'sine', 0.1); Core.save(); }
+                else { this.lives--; this.p.inv = 80; AudioEngine.play(100, 'sawtooth', 0.4); if(this.lives <= 0) this.end(); }
+            }
+            if(o.x < -200) this.obs.splice(i, 1);
+        });
+
+        if(Core.config.para) this.stars.forEach(s => s.x = (s.x - 0.2 + this.canvas.width) % this.canvas.width);
+        UI.refresh();
+    },
+    
+    drawDino(c, x, y, clr) {
+        c.fillStyle = clr;
+        if(Core.config.glow) { c.shadowBlur = 20; c.shadowColor = clr; }
+        c.beginPath(); c.roundRect(x, y + 10, 52, 38, 10); c.fill();
+        c.beginPath(); c.roundRect(x + 28, y - 22, 32, 32, 8); c.fill();
+        c.fillRect(x + 45, y - 10, 20, 15);
+        c.beginPath(); c.moveTo(x, y + 15); c.lineTo(x - 22, y + 5); c.lineTo(x - 18, y + 40); c.fill();
+        c.fillStyle = "#000"; c.fillRect(x + 48, y - 15, 6, 6);
+        c.fillStyle = clr;
+        let walk = Math.sin(this.p.anim) * 18;
+        c.fillRect(x + 8, y + 48, 14, 14 + (this.p.g ? walk : 0));
+        c.fillRect(x + 32, y + 48, 14, 14 + (this.p.g ? -walk : 0));
+        c.shadowBlur = 0;
+    },
+
+    drawPtero(c, x, y) {
+        c.fillStyle = "#fff";
+        if(Core.config.glow) { c.shadowBlur = 15; c.shadowColor = "#fff"; }
+        c.fillRect(x, y, 40, 15);
+        c.fillRect(x + 35, y - 5, 15, 10);
+        let flap = Math.sin(this.frame * 0.2) * 25;
+        c.beginPath(); c.moveTo(x + 10, y + 7); c.lineTo(x + 25, y + 7 + flap); c.lineTo(x + 25, y + 7 - flap); c.fill();
+        c.shadowBlur = 0;
+    },
+
+    draw() {
+        const c = this.ctx, w = this.canvas.width, h = this.canvas.height, gy = h * 0.75;
+        let night = Math.floor(this.score / 500) % 2 === 1;
+
+        c.fillStyle = night ? "#02020a" : "#009dff";
+        c.fillRect(0, 0, w, h);
+        if(Core.config.sky) { c.fillStyle = "#fff"; this.stars.forEach(s => c.fillRect(s.x, s.y, s.s, s.s)); }
+
+        c.fillStyle = night ? "#eee" : "#ffcc00";
+        if(Core.config.glow) { c.shadowBlur = 50; c.shadowColor = c.fillStyle; }
+        c.beginPath(); c.arc(w - 120, 120, 42, 0, Math.PI*2); c.fill();
+        c.shadowBlur = 0;
+
+        c.fillStyle = "#050505"; c.fillRect(0, gy, w, h-gy);
+        c.strokeStyle = night ? "#00ffcc" : "#fff";
+        c.lineWidth = 3; c.beginPath(); c.moveTo(0, gy); c.lineTo(w, gy); c.stroke();
+
+        this.obs.forEach(o => {
+            if(o.t === 'coin') {
+                c.fillStyle = "gold"; if(Core.config.glow) { c.shadowBlur = 20; c.shadowColor = "gold"; }
+                c.beginPath(); c.arc(o.x+15, o.y+15, 14, 0, 7); c.fill();
+            } else if(o.t === 'bird') {
+                this.drawPtero(c, o.x, o.y);
+            } else {
+                c.fillStyle = "#ff0044"; if(Core.config.glow) { c.shadowBlur = 20; c.shadowColor = "#ff0044"; }
+                c.beginPath(); c.roundRect(o.x, o.y, 18, 55, 6); c.roundRect(o.x-12, o.y+15, 12, 22, 4); c.roundRect(o.x+18, o.y+10, 12, 28, 4); c.fill();
+            }
+            c.shadowBlur = 0;
+        });
+
+        if(this.active && !(this.p.inv > 0 && Math.floor(this.frame/5)%2===0)) {
+            this.drawDino(c, this.p.x, this.p.y, Core.user ? Core.user.cur : "#00ffcc");
+        }
+    },
+    end() { 
+        this.active = false; 
+        Core.user.hi = Math.max(Core.user.hi, this.score); 
+        Core.save(); 
+        UI.showFail(); 
+    },
+    loop() { 
+        this.update(); 
+        this.draw(); 
+        requestAnimationFrame(() => this.loop()); 
+    }
+};
+
+const UI = {
+    show(id) { document.querySelectorAll('.card').forEach(c => c.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); if(id==='scr-shop') this.buildShop(); },
+    hideAll() { document.querySelectorAll('.card').forEach(c => c.classList.add('hidden')); document.getElementById('overlay').classList.add('hidden'); },
+    refresh() {
+        const hp = document.getElementById('hp-val');
+        if(hp) hp.innerText = "❤️".repeat(Math.max(0, Engine.lives));
+        const cr = document.getElementById('cr-val');
+        if(cr) cr.innerText = Core.user ? Core.user.cr : 0;
+        const sc = document.getElementById('sc-val');
+        if(sc) sc.innerText = Engine.score + "M";
+    },
+    showFail() { 
+        document.getElementById('overlay').classList.remove('hidden'); 
+        document.getElementById('final-sc-label').innerText = Engine.score + "M"; 
+        this.show('scr-fail'); 
+        document.getElementById('hud').style.opacity = 0;
+    },
+    buildShop() {
+        const grid = document.getElementById('skin-grid'); grid.innerHTML = "";
+        Core.skins.forEach(s => {
+            let own = Core.user.sks.includes(s.c);
+            let item = document.createElement('div');
+            item.className = `skin-item ${Core.user.cur === s.c ? 'active' : ''}`;
+            item.innerHTML = `<div class="skin-preview" style="background:${s.c}"></div><div style="font-size:10px">${s.n}</div><div class="price-tag">${own ? 'EQUIP' : '$'+s.p}</div>`;
+            item.onclick = () => {
+                if(own) Core.user.cur = s.c;
+                else if(Core.user.cr >= s.p) { Core.user.cr -= s.p; Core.user.sks.push(s.c); Core.user.cur = s.c; }
+                Core.save(); this.buildShop();
+            };
+            grid.appendChild(item);
+        });
+    }
+};
+
+window.addEventListener('touchstart', (e) => { 
+    if(e.target.tagName !== 'BUTTON' && Engine.active && Engine.p.g) { Engine.p.dy = -19; Engine.p.g = false; AudioEngine.play(400, 'square', 0.15); }
+});
+Engine.init();
+</script>
+</body>
+</html>
